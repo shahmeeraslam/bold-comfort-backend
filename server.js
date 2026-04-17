@@ -18,8 +18,21 @@ import cartRoutes from './routes/cartRoutes.js';
 const app = express();
 
 // 2. Global Middleware
+const allowedOrigins = [
+  "http://localhost:5173", // Local Vite dev
+  "https://timelesspk-frontend.vercel.app", // Production Vercel
+];
+
 app.use(cors({
-  origin: "https://timelesspk-frontend.vercel.app", // Ensure this matches your Vite frontend port
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl) 
+    // or if the origin is in our allowed list
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
 }));
 
