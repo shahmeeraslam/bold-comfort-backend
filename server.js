@@ -15,12 +15,11 @@ console.log("------------------------------");
 import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
-
 const app = express();
 
 // 2. Global Middleware
 app.use(cors({
-  origin: "http://localhost:5173", // Ensure this matches your Vite frontend port
+  origin: "https://timelesspk-frontend.vercel.app", // Ensure this matches your Vite frontend port
   credentials: true,
 }));
 
@@ -63,10 +62,11 @@ if (!MONGO_URI) {
 
 // Connection logic with modern Mongoose defaults
 mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log("✔️ Archive_Database_Connected");
+.then(() => {
+  console.log("✔️ Archive_Database_Connected");
     app.listen(PORT, () => console.log(`🚀 Terminal_Running_On_Port_${PORT}`));
   })
   .catch(err => {
     console.error("❌ CONNECTION_FATAL:", err.message);
   });
+  export default app;
