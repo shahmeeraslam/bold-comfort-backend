@@ -36,17 +36,23 @@ const productSchema = new mongoose.Schema({
     required: [true, "Archive price is required"],
     set: v => (v === '' || v === null) ? 0 : v 
   },
+  // NEW: Seasonal Discount Percentage
+  discount: {
+    type: Number,
+    default: 0,
+    min: [0, "Discount cannot be negative"],
+    max: [99, "Discount cannot exceed 99%"],
+    set: v => (v === '' || v === null) ? 0 : v
+  },
   stock: { 
     type: Number, 
     default: 0,
     set: v => (v === '' || v === null) ? 0 : v
   },
-  // UPDATED: Now an array of objects {url, color}
   image: { 
     type: [taggedImageSchema],
     default: []
   },
-  // NEW: Store the available color palette for this product
   colors: {
     type: [String],
     default: []
@@ -86,6 +92,15 @@ const productSchema = new mongoose.Schema({
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
+});
+
+// --- VIRTUAL: Sale Price Calculation ---
+// Access this via product.salePrice in your frontend
+productSchema.virtual('salePrice').get(function() {
+  if (this.discount > 0) {
+    return this.price - (this.price * (this.discount / 100));
+  }
+  return this.price;
 });
 
 // --- UPDATED PRE-SAVE HOOK ---

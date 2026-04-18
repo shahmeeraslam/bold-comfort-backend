@@ -16,7 +16,7 @@ const sanitizeVideoUrl = (url) => {
   return url;
 };
 
-// --- FIXED: Create Review ---
+// --- Create Review ---
 export const createReview = async (req, res, next) => {
   try {
     const { rating, comment, name, userImg } = req.body;
@@ -105,14 +105,20 @@ export const createProduct = async (req, res, next) => {
     // Convert numerical values
     if (data.price !== undefined) data.price = Number(data.price);
     if (data.stock !== undefined) data.stock = Number(data.stock);
+    
+    // NEW: Handle Discount Logic
+    if (data.discount !== undefined) {
+      data.discount = Math.min(Math.max(Number(data.discount), 0), 99);
+    } else {
+      data.discount = 0;
+    }
+
     if (data.videoUrl) data.videoUrl = sanitizeVideoUrl(data.videoUrl);
     
-    // Extract thumbnail string from the first TaggedImage object
     if (data.image && data.image.length > 0) {
       data.img = data.image[0].url; 
     }
     
-    // Ensure colors registry is present (handled by the schema but good for explicit safety)
     if (!data.colors) data.colors = [];
 
     const newProduct = new Product(data);
@@ -131,20 +137,28 @@ export const updateProduct = async (req, res, next) => {
     }
     const data = req.body;
     
+    // Process Numerical Data
     if (data.price !== undefined) data.price = Number(data.price);
     if (data.stock !== undefined) data.stock = Number(data.stock);
-    if (data.videoUrl) data.videoUrl = sanitizeVideoUrl(data.videoUrl);
+    if (data.discount !== undefined) {
+      data.discount = Math.min(Math.max(Number(data.discount), 0), 99);
+    }
     
-    // Extract thumbnail string from the first TaggedImage object
+    // Sanitize Video & Images
+    if (data.videoUrl) data.videoUrl = sanitizeVideoUrl(data.videoUrl);
     if (data.image && data.image.length > 0) {
       data.img = data.image[0].url;
     }
 
-    // Use findByIdAndUpdate to apply the new data object (includes colors array)
+    // FIXED: Swapped 'new: true' for 'returnDocument: after'
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id, 
       data, 
-      { new: true, runValidators: true, context: 'query' } 
+      { 
+        returnDocument: 'after', // This replaces 'new: true'
+        runValidators: true, 
+        context: 'query' 
+      } 
     );
     
     if (!updatedProduct) return res.status(404).json({ message: "Piece not found" });

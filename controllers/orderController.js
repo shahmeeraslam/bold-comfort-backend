@@ -1,17 +1,48 @@
 import Cart from "../models/Cart.js";
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/User.js";
+import productModel from "../models/items.js"; // This is your item.js model
 
 export const placeOrder = async (req, res) => {
   try {
     const userId = req.user._id; 
     const { items, amount, address } = req.body;
 
+    let verifiedTotal = 0;
+    
+    for (const item of items) {
+      // Ensure we handle both object and string ID formats
+      const pId = item.productId._id || item.productId;
+      
+      // FIX: Changed 'Product' to 'productModel' to match your import
+      const product = await productModel.findById(pId);
+      
+      if (!product) {
+        return res.status(404).json({ 
+          success: false, 
+          message: `Product_Not_Found: ID ${pId} is missing from the archive.` 
+        });
+      }
+
+      const discount = product.discount || 0;
+      const priceAfterDiscount = product.price * (1 - discount / 100);
+      
+      verifiedTotal += priceAfterDiscount * item.quantity;
+    }
+
+    // Integrity Check: Margin of 5 for floating-point precision
+    if (Math.abs(verifiedTotal - amount) > 5) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Integrity_Check_Failure: Price mismatch detected." 
+      });
+    }
+
     const orderData = {
       userId,
       items,
       address,
-      amount,
+      amount: Math.round(verifiedTotal),
       paymentMethod: "COD", 
       payment: false,
       status: "Pending Verification",
@@ -21,16 +52,12 @@ export const placeOrder = async (req, res) => {
     const newOrder = new orderModel(orderData);
     await newOrder.save();
 
-    /**
-     * FIX: Use the Cart model to clear the items array.
-     * We use findOneAndUpdate({ userId }) because we are searching 
-     * by the field 'userId' inside the Cart document.
-     */
+    // Clear the user's cart after successful order
     await Cart.findOneAndUpdate({ userId }, { items: [] });
 
     res.json({ 
       success: true, 
-      message: "Order initiated. Our team will contact you shortly." 
+      message: "Order initiated. The Archive has been updated." 
     });
 
   } catch (error) {
@@ -42,20 +69,20 @@ export const placeOrder = async (req, res) => {
 export const userOrders = async (req, res) => {
     try {
         const userId = req.user._id;
-        const orders = await orderModel.find({ userId });
+        const orders = await orderModel.find({ userId }).sort({ createdAt: -1 });
         res.json({ success: true, orders });
     } catch (error) {
-        console.log(error);
+        console.error("User_Orders_Fetch_Error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
 export const allOrders = async (req, res) => {
     try {
-        // Fetches EVERY order in the database for the Admin
-        const orders = await orderModel.find({});
+        const orders = await orderModel.find({}).sort({ createdAt: -1 });
         res.json({ success: true, orders });
     } catch (error) {
+        console.error("Admin_Orders_Fetch_Error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -71,7 +98,6 @@ export const updateStatus = async (req, res) => {
             });
         }
 
-        // UPDATE: Replaced { new: true } with { returnDocument: 'after' }
         const updatedOrder = await orderModel.findByIdAndUpdate(
             orderId, 
             { status }, 
