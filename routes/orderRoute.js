@@ -1,5 +1,5 @@
 import express from 'express';
-import { allOrders, placeOrder, userOrders } from '../controllers/orderController.js';
+import { allOrders, placeOrder, updateStatus, userOrders } from '../controllers/orderController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const orderRouter = express.Router();
@@ -8,4 +8,5 @@ const orderRouter = express.Router();
 orderRouter.get('/userorders', protect, userOrders);
 orderRouter.post('/place', protect, placeOrder);
 orderRouter.get('/list' , protect , allOrders)
+orderRouter.post('/status', protect, updateStatus);
 export default orderRouter;

@@ -1,17 +1,33 @@
 import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
+  // Changed to ObjectId for better indexing and population logic
+  userId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
   items: { type: Array, required: true },
   amount: { type: Number, required: true },
-  address: { type: Object, required: true }, // Stores the logistics data
-  status: { type: String, default: "Order Placed" },
-  paymentMethod: { type: String, required: true },
+  address: { type: Object, required: true }, 
+  /**
+   * Updated default to match your controller's logic 
+   * ("Pending Verification" for COD orders)
+   */
+  status: { 
+    type: String, 
+    default: "Pending Verification" 
+  },
+  paymentMethod: { type: String, required: true, default: "COD" },
   payment: { type: Boolean, default: false },
-  date: { type: Number, required: true }
+  // Using Date type for easier querying by month/year later
+  date: { type: Date, default: Date.now }
+}, {
+  // Adds createdAt and updatedAt automatically
+  timestamps: true 
 });
 
-// Use export default for ESM
+// Better practice for Next.js/Vite environments to prevent model re-compilation
 const orderModel = mongoose.models.order || mongoose.model("order", orderSchema);
 
 export default orderModel;
