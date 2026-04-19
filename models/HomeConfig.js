@@ -92,27 +92,26 @@ footwearProducts: [{
 },
 
 aboutPage: {
-  // Section 01: The Big Title
-  hero: {
-    titleTop: { type: String, default: "Defining" },
-    titleBottom: { type: String, default: "Quiet_Confidence." },
-    sideNote: { type: String, default: "Operating at the intersection of tactile luxury." }
+    hero: {
+      titleTop: { type: String, default: "Pure" },
+      titleBottom: { type: String, default: "Logic." },
+      sideNote: { type: String, default: "Redefining tactile luxury..." }
+    },
+    manifesto: {
+      title: { type: String, default: "The Slow Architecture" },
+      text: { type: String, default: "" },
+      image: { type: String, default: "" },
+      systemNote: { type: String, default: "[Core_Check]: Integrity established." }
+    },
+    disciplines: [
+      {
+        title: { type: String },
+        description: { type: String },
+        image: { type: String }
+      }
+    ]
   },
-  // Section 02: The Philosophy/Manifesto
-  manifesto: {
-    title: { type: String, default: "The 'Slow' Manifesto" },
-    text: { type: String },
-    image: { type: String }, // Large workshop image
-    systemNote: { type: String, default: "[System_Note]: Fiber density verified." }
-  },
-  // Section 03: The Disciplines (Array)
-  disciplines: [{
-    id: String,
-    title: String,
-    description: String,
-    imageUrl: String
-  }]
-},
+
   
   // --- SECTION 03: HUD/ANNOUNCEMENT ---
   announcement: {

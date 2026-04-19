@@ -1,7 +1,8 @@
 import Cart from "../models/Cart.js";
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/User.js";
-import productModel from "../models/items.js"; // This is your item.js model
+import productModel from "../models/items.js";
+import { sendOrderEmail } from "../utils/mailer.js"; // Ensure you create this utility
 
 export const placeOrder = async (req, res) => {
   try {
@@ -11,16 +12,20 @@ export const placeOrder = async (req, res) => {
     let verifiedTotal = 0;
     
     for (const item of items) {
-      // Ensure we handle both object and string ID formats
       const pId = item.productId._id || item.productId;
-      
-      // FIX: Changed 'Product' to 'productModel' to match your import
       const product = await productModel.findById(pId);
       
       if (!product) {
         return res.status(404).json({ 
           success: false, 
-          message: `Product_Not_Found: ID ${pId} is missing from the archive.` 
+          message: `Product_Not_Found: ID ${pId} is missing.` 
+        });
+      }
+
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Inventory_Conflict: ${product.name} only has ${product.stock} units remaining.`
         });
       }
 
@@ -30,7 +35,6 @@ export const placeOrder = async (req, res) => {
       verifiedTotal += priceAfterDiscount * item.quantity;
     }
 
-    // Integrity Check: Margin of 5 for floating-point precision
     if (Math.abs(verifiedTotal - amount) > 5) {
       return res.status(400).json({ 
         success: false, 
@@ -52,12 +56,28 @@ export const placeOrder = async (req, res) => {
     const newOrder = new orderModel(orderData);
     await newOrder.save();
 
-    // Clear the user's cart after successful order
+    // --- AUTOMATED NOTIFICATION DISPATCH ---
+    try {
+      // req.user must contain the email from your auth middleware
+      await sendOrderEmail(req.user.email, newOrder);
+    } catch (mailError) {
+      console.error("Email_System_Offline:", mailError);
+      // Logic continues so user isn't blocked by mail server issues
+    }
+
+    const stockUpdates = items.map((item) => {
+      const pId = item.productId._id || item.productId;
+      return productModel.findByIdAndUpdate(pId, {
+        $inc: { stock: -item.quantity }
+      });
+    });
+    await Promise.all(stockUpdates);
+
     await Cart.findOneAndUpdate({ userId }, { items: [] });
 
     res.json({ 
       success: true, 
-      message: "Order initiated. The Archive has been updated." 
+      message: "Order_Manifest_Logged. Verification protocol initiated via email." 
     });
 
   } catch (error) {
@@ -69,7 +89,11 @@ export const placeOrder = async (req, res) => {
 export const userOrders = async (req, res) => {
     try {
         const userId = req.user._id;
-        const orders = await orderModel.find({ userId }).sort({ createdAt: -1 });
+        // Add .populate('items.productId') to link the product data back to the order
+        const orders = await orderModel.find({ userId })
+            .populate('items.productId') 
+            .sort({ createdAt: -1 });
+            
         res.json({ success: true, orders });
     } catch (error) {
         console.error("User_Orders_Fetch_Error:", error);
