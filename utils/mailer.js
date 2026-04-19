@@ -9,6 +9,10 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendOrderEmail = async (userEmail, order) => {
+  // 1. Resolve Frontend URL inside the function to ensure process.env is ready
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  
+  // 2. Format Order ID for the "Archive" aesthetic
   const orderId = order._id.toString().slice(-6).toUpperCase();
   
   const mailOptions = {
@@ -25,7 +29,7 @@ export const sendOrderEmail = async (userEmail, order) => {
 
       <div style="padding: 40px 0;">
         <p style="font-size: 14px; line-height: 1.6; color: #bbb;">
-          Greetings <span style="color: #fff;">${order.address.firstName}</span>,
+          Greetings <span style="color: #fff;">${order.address.firstName || 'Client'}</span>,
         </p>
         <p style="font-size: 12px; line-height: 1.6; color: #888;">
           Your acquisition request has been successfully registered under index <strong style="color: #fff;">#${orderId}</strong>. 
@@ -34,13 +38,21 @@ export const sendOrderEmail = async (userEmail, order) => {
 
         <div style="background-color: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; margin: 30px 0;">
           <p style="font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Manifest_Items</p>
-          ${order.items.map(item => `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 11px;">
-              <span style="color: #fff;">${item.quantity}x ${item.name} (${item.size})</span>
-              <span style="color: #888;">PKR ${item.price.toLocaleString()}</span>
-            </div>
-          `).join('')}
-          <div style="border-top: 1px solid #1a1a1a; margin-top: 15px; pt-15px; display: flex; justify-content: space-between; font-weight: bold;">
+          
+          ${order.items.map(item => {
+            // Fallback for item name if it's nested or missing
+            const name = item.name || (item.productId && item.productId.name) || "UNIDENTIFIED_PIECE";
+            const price = item.price || (item.productId && item.productId.price) || 0;
+            
+            return `
+              <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 11px;">
+                <span style="color: #fff;">${item.quantity}x ${name} (${item.size || 'N/A'})</span>
+                <span style="color: #888;">PKR ${Math.round(price).toLocaleString()}</span>
+              </div>
+            `;
+          }).join('')}
+
+          <div style="border-top: 1px solid #1a1a1a; margin-top: 15px; padding-top: 15px; display: flex; justify-content: space-between; font-weight: bold;">
             <span style="color: #666; font-size: 10px; text-transform: uppercase;">Total_Valuation</span>
             <span style="color: #fff;">PKR ${order.amount.toLocaleString()}</span>
           </div>
@@ -55,7 +67,7 @@ export const sendOrderEmail = async (userEmail, order) => {
         </div>
 
         <div style="text-align: center; margin-top: 50px;">
-          <a href="${process.env.FRONTEND_URL}/my-orders" 
+          <a href="${frontendUrl}/orders" 
              style="display: inline-block; padding: 18px 40px; background-color: #ffffff; color: #000000; text-decoration: none; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 4px;">
             Track_Your_Manifest
           </a>
