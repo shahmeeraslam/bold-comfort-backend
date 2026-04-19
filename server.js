@@ -16,6 +16,7 @@ import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import orderRouter from './routes/orderRoute.js';
+import  homeRoutes from './routes/homeConfigRoutes.js'
 const app = express();
 
 // 2. Global Middleware
@@ -52,6 +53,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRouter);
+app.use('/api', homeRoutes);
 app.get('/', (req, res) => {
   res.send("Bold_Comfort_Terminal_v2.4_Active");
 });
