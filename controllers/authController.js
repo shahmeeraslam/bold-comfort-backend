@@ -253,3 +253,60 @@ export const updateShippingAddress = async (req, res) => {
     res.status(500).json({ message: "Failed to update address", error: error.message });
   }
 };
+
+// --- FORGOT PASSWORD (REQUEST CODE) ---
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  try {
+    if (!email) return res.status(400).json({ message: "EMAIL_NODE_REQUIRED" });
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(404).json({ message: "IDENTITY_NOT_FOUND" });
+
+    // Generate a 6-digit numerical OTP code matching your login system
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    user.otp = otp;
+    user.otpExpires = Date.now() + 10 * 60 * 1000; // 10-minute lifespan match
+    await user.save();
+
+    // Fire it out using your pre-configured Nodemailer engine!
+    await sendOTPEmail(user.email, otp);
+
+    res.status(200).json({ message: "RECOVERY_TELEMETRY_DISPATCHED: CHECK MAIL" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- RESET PASSWORD (VERIFY & OVERWRITE) ---
+export const resetPassword = async (req, res) => {
+  const { email, token, newPassword } = req.body; // 'token' here maps to the typed OTP field
+  try {
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ message: "CRITICAL_METADATA_MISSING" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(404).json({ message: "IDENTITY_NOT_FOUND" });
+
+    // Verify token expiration state and value match
+    if (user.otp !== token || user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: "INVALID_OR_EXPIRED_CODE" });
+    }
+
+    // Hash the incoming key spec using your system standard configuration
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Commit changes and wipe the temporary token out
+    user.password = hashedPassword;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "CREDENTIALS_OVERWRITTEN" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
